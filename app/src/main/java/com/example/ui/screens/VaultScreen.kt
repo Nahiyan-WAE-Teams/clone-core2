@@ -74,6 +74,7 @@ import com.example.ui.theme.EmeraldMatrix
 import com.example.ui.theme.JetBrainsMonoFamily
 import com.example.ui.theme.ObsidianCanvas
 import com.example.ui.theme.ObsidianOutline
+import com.example.ui.theme.ObsidianSurface
 import com.example.ui.theme.ObsidianSurfaceElevated
 import com.example.ui.theme.ObsidianSurfaceHigh
 import com.example.ui.theme.TextMuted

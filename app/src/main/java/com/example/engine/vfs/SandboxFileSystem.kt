@@ -127,8 +127,14 @@ object SandboxFileSystem {
         return File(context.filesDir, "sandboxes").apply { mkdirs() }
     }
 
+    private val cloneIdPattern = Regex("^[A-Za-z0-9_-]{1,64}$")
+
     fun getSandboxRoot(context: Context, cloneId: String): File {
-        return File(getSandboxBaseDir(context), cloneId)
+        require(cloneIdPattern.matches(cloneId)) { "Invalid clone ID" }
+        val base = getSandboxBaseDir(context).canonicalFile
+        val root = File(base, cloneId).canonicalFile
+        require(root.parentFile == base) { "Sandbox path escapes its root" }
+        return root
     }
 
     fun ensureSandboxRoot(context: Context, cloneId: String): File {

@@ -50,6 +50,7 @@ class SandboxProcessManager(
     private val messengers = mutableMapOf<Int, Messenger>()
     private val connections = mutableMapOf<Int, ServiceConnection>()
     private val pendingInits = mutableMapOf<Int, CloneInstanceEntity>()
+    private val slotOwners = mutableMapOf<Int, String>()
 
     private val replyHandler = object : Handler(Looper.getMainLooper()) {
         override fun handleMessage(msg: Message) {
@@ -85,39 +86,89 @@ class SandboxProcessManager(
 
     private val replyMessenger = Messenger(replyHandler)
 
-    fun startCloneInSlot(clone: CloneInstanceEntity) {
-        val slotIdx = clone.slotIndex.coerceIn(0, 3)
-        val existingMessenger = messengers[slotIdx]
-        if (existingMessenger != null) {
-            sendInitMessage(existingMessenger, clone)
-            return
+    fun startCloneInSlot(clone: CloneInstanceEntity): Boolean {
+        val slotIdx = clone.slotIndex
+        if (slotIdx !in 0..3) return false
+
+        synchronized(slotOwners) {
+            val owner = slotOwners[slotIdx]
+            if (owner != null && owner != clone.id) return false
+            if (owner == clone.id) {
+                return messengers.containsKey(slotIdx) || pendingInits[slotIdx]?.id == clone.id
+            }
+            slotOwners[slotIdx] = clone.id
+            pendingInits[slotIdx] = clone
         }
 
-        pendingInits[slotIdx] = clone
         val conn = object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+                if (service == null) {
+                    releaseFailedSlot(slotIdx, clone.id)
+                    return
+                }
                 val remote = Messenger(service)
-                messengers[slotIdx] = remote
-                val pending = pendingInits.remove(slotIdx) ?: clone
+                val pending = synchronized(slotOwners) {
+                    if (slotOwners[slotIdx] != clone.id) null
+                    else {
+                        messengers[slotIdx] = remote
+                        pendingInits.remove(slotIdx) ?: clone
+                    }
+                } ?: return
                 sendInitMessage(remote, pending)
                 onSlotEvent(
                     pending.id,
                     "PROCESS",
-                    "Bound isolated OS process :sandbox_p$slotIdx for ${pending.cloneLabel}"
+                    "Bound sandbox process :sandbox_p$slotIdx for ${pending.cloneLabel}"
                 )
             }
 
             override fun onServiceDisconnected(name: ComponentName?) {
-                messengers.remove(slotIdx)
-                connections.remove(slotIdx)
+                synchronized(slotOwners) {
+                    if (slotOwners[slotIdx] == clone.id) {
+                        slotOwners.remove(slotIdx)
+                        messengers.remove(slotIdx)
+                        connections.remove(slotIdx)
+                        pendingInits.remove(slotIdx)
+                    }
+                }
                 _slotStates.update { map ->
-                    map + (slotIdx to SlotProcessTelemetry(slotIdx, ":sandbox_p$slotIdx", lastStatus = "DISCONNECTED"))
+                    map + (slotIdx to SlotProcessTelemetry(
+                        slotIdx, ":sandbox_p$slotIdx", lastStatus = "DISCONNECTED"
+                    ))
                 }
             }
         }
-        connections[slotIdx] = conn
-        val intent = Intent(context, slotClasses[slotIdx])
-        context.bindService(intent, conn, Context.BIND_AUTO_CREATE)
+
+        synchronized(slotOwners) { connections[slotIdx] = conn }
+        val bound = try {
+            context.bindService(Intent(context, slotClasses[slotIdx]), conn, Context.BIND_AUTO_CREATE)
+        } catch (_: Exception) {
+            false
+        }
+        if (!bound) {
+            releaseFailedSlot(slotIdx, clone.id)
+            return false
+        }
+        return true
+    }
+
+    private fun releaseFailedSlot(slotIdx: Int, cloneId: String) {
+        val conn = synchronized(slotOwners) {
+            if (slotOwners[slotIdx] != cloneId) return
+            slotOwners.remove(slotIdx)
+            messengers.remove(slotIdx)
+            pendingInits.remove(slotIdx)
+            connections.remove(slotIdx)
+        }
+        if (conn != null) {
+            try { context.unbindService(conn) } catch (_: Exception) { }
+        }
+        _slotStates.update { map ->
+            map + (slotIdx to SlotProcessTelemetry(
+                slotIdx, ":sandbox_p$slotIdx", lastStatus = "BIND_FAILED"
+            ))
+        }
+        onSlotEvent(cloneId, "PROCESS", "Could not bind sandbox process :sandbox_p$slotIdx")
     }
 
     private fun sendInitMessage(remote: Messenger, clone: CloneInstanceEntity) {
@@ -162,25 +213,34 @@ class SandboxProcessManager(
     }
 
     fun stopSlot(slotIndex: Int) {
-        val conn = connections.remove(slotIndex)
-        messengers.remove(slotIndex)
-        pendingInits.remove(slotIndex)
+        if (slotIndex !in 0..3) return
+        val stoppedClone = synchronized(slotOwners) {
+            val owner = slotOwners.remove(slotIndex)
+            connections.remove(slotIndex).also {
+                messengers.remove(slotIndex)
+                pendingInits.remove(slotIndex)
+            }
+            owner
+        }
+        val conn = synchronized(slotOwners) { connections.remove(slotIndex) }
         if (conn != null) {
             try {
                 context.unbindService(conn)
             } catch (_: Exception) {
             }
         }
-        val stoppedClone = _slotStates.value[slotIndex]?.cloneId
         _slotStates.update { map ->
             map + (slotIndex to SlotProcessTelemetry(slotIndex, ":sandbox_p$slotIndex", lastStatus = "TERMINATED"))
         }
         onSlotEvent(stoppedClone, "PROCESS", "Terminated sandbox process slot :sandbox_p$slotIndex")
     }
 
-    fun pickAvailableSlotIndex(preferred: Int? = null): Int {
-        if (preferred != null && preferred in 0..3) return preferred
-        val current = _slotStates.value
-        return (0..3).firstOrNull { current[it]?.isBound != true } ?: 0
+    fun findSlotForClone(cloneId: String): Int? = synchronized(slotOwners) {
+        slotOwners.entries.firstOrNull { it.value == cloneId }?.key
+    }
+
+    fun pickAvailableSlotIndex(preferred: Int? = null): Int = synchronized(slotOwners) {
+        if (preferred != null && preferred in 0..3 && preferred !in slotOwners) return@synchronized preferred
+        (0..3).firstOrNull { it !in slotOwners } ?: -1
     }
 }

@@ -267,46 +267,65 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun launchCloneSession(clone: CloneInstanceEntity) {
         viewModelScope.launch {
-            if (clone.proxyEnabled) {
+            val assignedSlot = processManager.findSlotForClone(clone.id)
+                ?: processManager.pickAvailableSlotIndex(clone.slotIndex.takeIf { it in 0..3 })
+            if (assignedSlot !in 0..3) {
+                showMessage("All four sandbox process slots are in use. Stop a running clone first.")
+                return@launch
+            }
+
+            val sessionClone = clone.copy(slotIndex = assignedSlot)
+            if (!processManager.startCloneInSlot(sessionClone)) {
+                showMessage("Could not reserve :sandbox_p$assignedSlot. Try again.")
+                return@launch
+            }
+
+            if (sessionClone.proxyEnabled) {
                 val activeNodes = repository.getActiveProxyNodes()
-                val chosen = if (clone.proxyRotationMode == "ON_LAUNCH") {
-                    proxyEngine.selectNextRotationNode(activeNodes, clone.currentProxyLabel)
+                val chosen = if (sessionClone.proxyRotationMode == "ON_LAUNCH") {
+                    proxyEngine.selectNextRotationNode(activeNodes, sessionClone.currentProxyLabel)
                 } else {
-                    activeNodes.firstOrNull { it.id == clone.proxyPoolId } ?: activeNodes.firstOrNull()
+                    activeNodes.firstOrNull { it.id == sessionClone.proxyPoolId } ?: activeNodes.firstOrNull()
                 }
                 if (chosen != null) {
                     proxyEngine.setUpstreamNode(chosen)
                     val label = "${chosen.protocol}://${chosen.host}:${chosen.port}"
                     repository.updateClone(
-                        clone.copy(
+                        sessionClone.copy(
                             currentProxyLabel = label,
                             lastLaunchedAt = System.currentTimeMillis(),
-                            launchCount = clone.launchCount + 1
+                            launchCount = sessionClone.launchCount + 1
                         )
                     )
-                    repository.logEvent(clone.id, "PROXY", "Bound loopback relay -> $label")
+                    repository.logEvent(sessionClone.id, "PROXY", "Selected upstream proxy $label")
                 } else {
                     proxyEngine.setUpstreamNode(null)
                     repository.updateClone(
-                        clone.copy(
+                        sessionClone.copy(
                             lastLaunchedAt = System.currentTimeMillis(),
-                            launchCount = clone.launchCount + 1
+                            launchCount = sessionClone.launchCount + 1
                         )
                     )
                 }
-                scheduleAutoRotationIfNeeded(clone)
+                scheduleAutoRotationIfNeeded(sessionClone)
             } else {
                 proxyEngine.setUpstreamNode(null)
                 repository.updateClone(
-                    clone.copy(
+                    sessionClone.copy(
                         lastLaunchedAt = System.currentTimeMillis(),
-                        launchCount = clone.launchCount + 1
+                        launchCount = sessionClone.launchCount + 1
                     )
                 )
             }
 
-            processManager.startCloneInSlot(clone)
-            showMessage("Started ${clone.cloneLabel} in :sandbox_p${clone.slotIndex}")
+            if (sessionClone.slotIndex != clone.slotIndex) {
+                repository.logEvent(
+                    sessionClone.id,
+                    "PROCESS",
+                    "Assigned free process slot :sandbox_p$assignedSlot"
+                )
+            }
+            showMessage("Starting ${sessionClone.cloneLabel} in :sandbox_p$assignedSlot")
         }
     }
 
