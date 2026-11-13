@@ -126,11 +126,11 @@ fun AppsScreen(
         ) {
             Column {
                 Text(
-                    text = "App Discovery",
+                    text = "Choose an app",
                     style = MaterialTheme.typography.headlineSmall
                 )
                 Text(
-                    text = "${installedApps.size} launchable packages scanned via OS",
+                    text = "Select an installed app to create a separate space",
                     style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
                 )
             }
@@ -160,7 +160,7 @@ fun AppsScreen(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            placeholder = { Text("Search app name or package ID...") },
+            placeholder = { Text("Search installed apps") },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             singleLine = true,
             shape = RoundedCornerShape(14.dp),
@@ -175,7 +175,7 @@ fun AppsScreen(
             FilterChip(
                 selected = filterMode == "USER",
                 onClick = { filterMode = "USER" },
-                label = { Text("User Apps") },
+                label = { Text("Installed") },
                 modifier = Modifier.testTag("filter_user_apps")
             )
             FilterChip(
@@ -202,7 +202,7 @@ fun AppsScreen(
             ) {
                 CircularProgressIndicator(color = CyanPulse)
                 Spacer(modifier = Modifier.height(10.dp))
-                Text("Scanning PackageManager launchable intents...")
+                Text("Looking for installed apps…")
             }
         } else {
             LazyColumn(
@@ -342,7 +342,7 @@ private fun DeployCloneBottomSheet(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = "Configure Sandbox Deployment",
+                        text = "Create a clone",
                         style = MaterialTheme.typography.titleLarge
                     )
                     Text(
@@ -358,7 +358,7 @@ private fun DeployCloneBottomSheet(
             OutlinedTextField(
                 value = baseLabel,
                 onValueChange = { baseLabel = it },
-                label = { Text("Instance Label") },
+                label = { Text("Clone name") },
                 singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -371,9 +371,9 @@ private fun DeployCloneBottomSheet(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Batch Clone Count", style = MaterialTheme.typography.titleSmall)
+                    Text("Number of copies", style = MaterialTheme.typography.titleSmall)
                     Text(
-                        text = "${batchCount.roundToInt()} container(s)",
+                        text = "${batchCount.roundToInt()} ${if (batchCount.roundToInt() == 1) "copy" else "copies"}",
                         style = MaterialTheme.typography.labelMedium.copy(color = CyanPulse)
                     )
                 }
@@ -388,7 +388,7 @@ private fun DeployCloneBottomSheet(
 
             // Process Slot Selection
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Multi-Process Slot Assignment", style = MaterialTheme.typography.titleSmall)
+                Text("Process preference", style = MaterialTheme.typography.titleSmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
                         selected = preferredSlot == null,
@@ -412,9 +412,9 @@ private fun DeployCloneBottomSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Automated Proxy Routing", style = MaterialTheme.typography.titleSmall)
+                    Text("Use a proxy", style = MaterialTheme.typography.titleSmall)
                     Text(
-                        text = if (proxyNodes.isEmpty()) "Add proxy nodes in Network tab" else "${proxyNodes.size} node(s) in pool",
+                        text = if (proxyNodes.isEmpty()) "Add a proxy in Network settings" else "${proxyNodes.size} saved proxy(ies)",
                         style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
                     )
                 }
@@ -443,9 +443,9 @@ private fun DeployCloneBottomSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("GMS & Account Sandbox Guard", style = MaterialTheme.typography.titleSmall)
+                    Text("Separate account data", style = MaterialTheme.typography.titleSmall)
                     Text(
-                        text = "Isolate Google Play Services & OAuth tokens",
+                        text = "Keep supported account data separate where available",
                         style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
                     )
                 }
@@ -458,9 +458,9 @@ private fun DeployCloneBottomSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Clipboard & Intent Isolation", style = MaterialTheme.typography.titleSmall)
+                    Text("Separate clipboard access", style = MaterialTheme.typography.titleSmall)
                     Text(
-                        text = "Prevent cross-container clipboard leakage",
+                        text = "Reduce clipboard sharing between clones",
                         style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
                     )
                 }
@@ -469,7 +469,7 @@ private fun DeployCloneBottomSheet(
 
             // Virtual Device Profile
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Virtual Device Fingerprint", style = MaterialTheme.typography.titleSmall)
+                Text("Device profile", style = MaterialTheme.typography.titleSmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("Pixel 9 Pro", "Galaxy S25 Ultra", "Stock").forEach { model ->
                         FilterChip(
@@ -483,7 +483,7 @@ private fun DeployCloneBottomSheet(
 
             // Thread Scheduling Priority
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Kernel Thread Priority Boost", style = MaterialTheme.typography.titleSmall)
+                Text("Performance preference", style = MaterialTheme.typography.titleSmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(0 to "Standard (0)", -4 to "Fast (-4)", -8 to "Urgent (-8)").forEach { (prio, title) ->
                         FilterChip(
@@ -498,7 +498,7 @@ private fun DeployCloneBottomSheet(
             OutlinedTextField(
                 value = pinCode,
                 onValueChange = { if (it.length <= 8) pinCode = it },
-                label = { Text("Optional Container Lock PIN") },
+                label = { Text("Optional clone PIN") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
@@ -528,7 +528,7 @@ private fun DeployCloneBottomSheet(
                     .height(52.dp)
                     .testTag("confirm_deploy_clone_btn")
             ) {
-                Text("Provision ${batchCount.roundToInt()} Isolated Container(s)")
+                Text("Create ${batchCount.roundToInt()} clone(s)")
             }
 
             Spacer(modifier = Modifier.height(16.dp))
