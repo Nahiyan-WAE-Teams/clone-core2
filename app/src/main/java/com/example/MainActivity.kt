@@ -88,9 +88,9 @@ private data class TopNavItem(
 )
 
 private val TOP_NAV_ITEMS = listOf(
-    TopNavItem(Routes.VAULT, "Vault", Icons.Filled.Layers, Icons.Outlined.Layers, "nav_vault"),
+    TopNavItem(Routes.VAULT, "Clones", Icons.Filled.Layers, Icons.Outlined.Layers, "nav_vault"),
     TopNavItem(Routes.APPS, "Apps", Icons.Filled.Apps, Icons.Outlined.Apps, "nav_apps"),
-    TopNavItem(Routes.KERNEL, "Kernel", Icons.Filled.Speed, Icons.Outlined.Speed, "nav_kernel"),
+    TopNavItem(Routes.KERNEL, "Activity", Icons.Filled.Speed, Icons.Outlined.Speed, "nav_kernel"),
     TopNavItem(Routes.NETWORK, "Network", Icons.Filled.Hub, Icons.Outlined.Hub, "nav_network")
 )
 
@@ -101,7 +101,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(AndroidColor.TRANSPARENT),
+            statusBarStyle = SystemBarStyle.light(AndroidColor.TRANSPARENT, AndroidColor.BLACK),
             navigationBarStyle = SystemBarStyle.dark(AndroidColor.TRANSPARENT)
         )
         viewModel.handleIncomingDeepLink(intent)
