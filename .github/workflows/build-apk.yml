@@ -46,10 +46,29 @@ jobs:
           echo "/tmp/gradle/gradle-9.3.1/bin" >> "$GITHUB_PATH"
 
       - name: Prepare debug keystore
+        shell: bash
         run: |
-          if [ -f debug.keystore.base64 ] && [ ! -f debug.keystore ]; then
-            base64 -d debug.keystore.base64 > debug.keystore
+          set -euo pipefail
+
+          if [ -f debug.keystore.base64 ] && [ ! -s debug.keystore ]; then
+            base64 --decode debug.keystore.base64 > debug.keystore
           fi
+
+          if [ ! -s debug.keystore ]; then
+            keytool -genkeypair -v \
+              -keystore debug.keystore \
+              -storepass android \
+              -alias androiddebugkey \
+              -keypass android \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+          test -s debug.keystore
+          keytool -list -keystore debug.keystore -storepass android -alias androiddebugkey >/dev/null
+          echo "Debug keystore is present and readable."
 
       - name: Build Debug APK
         env:
