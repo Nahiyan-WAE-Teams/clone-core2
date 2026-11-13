@@ -61,7 +61,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Isolated Multi-Process Sandbox Slots (Zero-Root OS Process Isolation) -->
+        <!-- Dedicated app processes for workspace state; same UID, not a security boundary. -->
         <service
             android:name=".engine.process.SandboxSlot0Service"
             android:exported="false"

@@ -15,9 +15,11 @@ import com.example.engine.vfs.SandboxFileSystem
 import com.example.engine.vfs.VirtualContextWrapper
 
 /**
- * Remote multi-process sandbox container service.
- * Each subclass runs in its own isolated Linux process (:sandbox_p0 .. :sandbox_p3)
- * with an independent Dalvik/ART heap, PID, and VirtualContextWrapper.
+ * Remote multi-process workspace service.
+ * Each subclass runs in a dedicated app process (:sandbox_p0 .. :sandbox_p3)
+ * with its own PID and ART heap. These processes share the host app UID and
+ * permissions; they are not isolated security principals and do not execute
+ * the target APK as a guest application.
  */
 abstract class BaseSandboxSlotService : Service() {
 

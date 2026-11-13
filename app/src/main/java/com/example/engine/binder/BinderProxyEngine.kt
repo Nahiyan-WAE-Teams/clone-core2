@@ -115,10 +115,11 @@ object BinderProxyEngine {
         recordAndroidIdSpoof()
 
         return listOf(
-            "PMS Proxy: $virtualPackage -> $resolvedPkg",
-            "Sig Digest Preserved: ${sig.take(20)}...",
-            "Provider Remap: $remappedUri",
-            "GMS Namespace: $gmsNs"
+            "Local package mapping preview: $virtualPackage -> $resolvedPkg",
+            "Installed source APK certificate SHA-256: ${sig.take(20)}...",
+            "Content URI authority rewrite preview: $remappedUri",
+            "GMS namespace string preview: $gmsNs",
+            "Framework Binder interception: NOT INSTALLED"
         )
     }
 
@@ -126,37 +127,37 @@ object BinderProxyEngine {
         return listOf(
             BinderHookMetric(
                 id = "ams",
-                hookName = "AMS Activity & Task Proxy",
-                targetInterface = "android.app.IActivityManager",
-                status = "ACTIVE",
+                hookName = "Activity rewrite counter",
+                targetInterface = "No Android AMS connection",
+                status = "COUNTER ONLY",
                 intercepts = amsIntercepts.get()
             ),
             BinderHookMetric(
                 id = "pms",
-                hookName = "PMS Signature & Pkg Proxy",
-                targetInterface = "android.content.pm.IPackageManager",
-                status = "ACTIVE",
+                hookName = "Local package mapping helper",
+                targetInterface = "CloneCore interface only",
+                status = "SELF-TEST ONLY",
                 intercepts = pmsIntercepts.get()
             ),
             BinderHookMetric(
                 id = "cp",
-                hookName = "ContentProvider Authority Isolator",
-                targetInterface = "android.content.IContentProvider",
-                status = "ACTIVE",
+                hookName = "Content URI authority formatter",
+                targetInterface = "URI string helper only",
+                status = "SELF-TEST ONLY",
                 intercepts = providerIntercepts.get()
             ),
             BinderHookMetric(
                 id = "gms",
-                hookName = "GMS & Account Token Sandbox",
-                targetInterface = "com.google.android.gms.common",
-                status = "GUARDED",
+                hookName = "GMS namespace formatter",
+                targetInterface = "Local namespace helper only",
+                status = "SELF-TEST ONLY",
                 intercepts = gmsIntercepts.get()
             ),
             BinderHookMetric(
                 id = "id",
-                hookName = "Device & Android_ID Virtualizer",
+                hookName = "Android ID event counter",
                 targetInterface = "android.provider.Settings\$Secure",
-                status = "ACTIVE",
+                status = "COUNTER ONLY",
                 intercepts = idIntercepts.get()
             )
         )

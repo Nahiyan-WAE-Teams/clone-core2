@@ -478,7 +478,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
             _binderHooks.value = BinderProxyEngine.getActiveHookMetrics()
             lines.forEach { repository.logEvent(clone.id, "BINDER", it) }
-            showMessage("Verified 5 Binder & PMS/Provider proxy hooks")
+            showMessage("Local compatibility checks completed; Android Binder hooks are not installed")
         }
     }
 

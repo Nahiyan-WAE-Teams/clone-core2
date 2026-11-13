@@ -20,16 +20,16 @@ data class RelayStatus(
     val isRunning: Boolean = false,
     val localHost: String = "127.0.0.1",
     val localPort: Int = 0,
-    val activeUpstreamLabel: String = "Direct Passthrough",
+    val activeUpstreamLabel: String = "No upstream configured",
     val totalRelayedConnections: Int = 0,
     val lastRotationAt: Long = 0L
 )
 
 /**
- * Local Loopback Proxy Relay & Upstream Rotation Engine.
- * Runs a lightweight ServerSocket on 127.0.0.1:<ephemeralPort> inside the app
- * process, supporting atomic upstream proxy switching (SOCKS5 / HTTP CONNECT)
- * and real TCP socket latency probing without root permissions.
+ * Local raw TCP relay with a selectable upstream socket endpoint.
+ * The relay forwards bytes unchanged; it does not capture guest-app traffic,
+ * negotiate SOCKS5/HTTP CONNECT on behalf of clients, or implement proxy
+ * authentication. It is therefore not yet a per-clone traffic-routing engine.
  */
 class ProxyRotationEngine {
 
@@ -78,7 +78,7 @@ class ProxyRotationEngine {
     fun setUpstreamNode(node: ProxyNodeEntity?) {
         activeUpstream.set(node)
         val label = if (node == null) {
-            "Direct Passthrough"
+            "No upstream configured (incoming relay clients are closed)"
         } else {
             "${node.protocol}://${node.host}:${node.port} (${node.regionTag})"
         }
@@ -141,8 +141,8 @@ class ProxyRotationEngine {
     }
 
     /**
-     * Performs a real TCP socket connection + protocol greeting probe
-     * to measure genuine RTT latency in milliseconds.
+     * Performs a TCP reachability check and, for SOCKS5, a protocol greeting.
+     * HTTP proxy checks currently measure TCP reachability only.
      */
     suspend fun probeProxyLatency(node: ProxyNodeEntity): Int = withContext(Dispatchers.IO) {
         val startNs = System.nanoTime()
