@@ -1,11 +1,6 @@
 package com.example.ui.screens
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,29 +9,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.PushPin
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -46,37 +26,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.example.R
 import com.example.data.db.CloneInstanceEntity
 import com.example.engine.network.RelayStatus
 import com.example.engine.process.SlotProcessTelemetry
 import com.example.ui.MainViewModel
-import com.example.ui.components.AppIconBadge
 import com.example.ui.components.PinVerifyDialog
-import com.example.ui.components.SlotStatusStrip
-import com.example.ui.components.StatusPill
-import com.example.ui.theme.AmberWarn
-import com.example.ui.theme.CoralAlert
-import com.example.ui.theme.CyanPulse
-import com.example.ui.theme.EmeraldMatrix
-import com.example.ui.theme.JetBrainsMonoFamily
-import com.example.ui.theme.ObsidianCanvas
 import com.example.ui.theme.ObsidianOutline
-import com.example.ui.theme.ObsidianSurfaceElevated
-import com.example.ui.theme.ObsidianSurfaceHigh
-import com.example.ui.theme.TextMuted
+import com.example.ui.theme.ObsidianSurface
 import com.example.ui.theme.TextSecondary
 
 @Composable
@@ -91,215 +51,120 @@ fun VaultScreen(
 ) {
     val clipboard = LocalClipboardManager.current
     var pendingPinClone by remember { mutableStateOf<CloneInstanceEntity?>(null) }
-
-    val activeSlotCount = slots.values.count { it.isBound }
+    val runningCount = clones.count { it.isRunning }
 
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .testTag("vault_screen_list"),
-        contentPadding = PaddingValues(16.dp),
+        modifier = Modifier.fillMaxSize().testTag("vault_screen_list"),
+        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Hero Architecture Banner
         item {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(186.dp)
-                    .clip(RoundedCornerShape(22.dp))
-                    .border(1.dp, ObsidianOutline, RoundedCornerShape(22.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.img_sandbox_hero),
-                    contentDescription = "Sandbox engine architecture hero banner",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    ObsidianCanvas.copy(alpha = 0.25f),
-                                    ObsidianCanvas.copy(alpha = 0.88f)
-                                )
-                            )
-                        )
-                )
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.SpaceBetween
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text("Cloned apps", style = MaterialTheme.typography.headlineMedium)
+                    Text(
+                        "Keep separate app spaces on this device",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary
+                    )
+                }
+                Button(
+                    onClick = onNavigateToApps,
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
+                    modifier = Modifier.testTag("hero_deploy_clone_button")
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        StatusPill(
-                            text = if (relayStatus.isRunning) {
-                                "RELAY 127.0.0.1:${relayStatus.localPort}"
-                            } else {
-                                "ENGINE READY"
-                            },
-                            accentColor = if (relayStatus.isRunning) EmeraldMatrix else CyanPulse
-                        )
-                        StatusPill(
-                            text = "NO-ROOT VFS",
-                            accentColor = CyanPulse
-                        )
-                    }
-
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(
-                            text = "CloneCore Engine",
-                            style = MaterialTheme.typography.headlineMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onBackground
-                            )
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "${clones.size} Containers · $activeSlotCount/4 Parallel Slots",
-                                style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary)
-                            )
-                            Button(
-                                onClick = onNavigateToApps,
-                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
-                                modifier = Modifier.testTag("hero_deploy_clone_button")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Add,
-                                    contentDescription = "Deploy clone",
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(stringResource(R.string.action_new_clone))
-                            }
-                        }
-                    }
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Add app")
                 }
             }
         }
 
-        // Parallel Multi-Process Slots Strip
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = ObsidianSurface,
+                shape = MaterialTheme.shapes.medium,
+                border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianOutline)
+            ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(28.dp)
                 ) {
-                    Text(
-                        text = "PARALLEL SANDBOX SLOTS",
-                        style = MaterialTheme.typography.labelMedium.copy(color = TextSecondary)
-                    )
-                    Text(
-                        text = "Inspect Kernel ->",
-                        style = MaterialTheme.typography.labelMedium.copy(color = CyanPulse),
-                        modifier = Modifier
-                            .clickable(onClick = onNavigateToKernel)
-                            .padding(vertical = 4.dp)
-                    )
-                }
-                SlotStatusStrip(
-                    slots = slots,
-                    onSlotClick = { idx ->
-                        val boundCloneId = slots[idx]?.cloneId
-                        if (boundCloneId != null) {
-                            onOpenCloneDetail(boundCloneId)
-                        } else {
-                            onNavigateToKernel()
-                        }
+                    Column {
+                        Text("${clones.size}", style = MaterialTheme.typography.titleLarge)
+                        Text("Cloned", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                     }
-                )
+                    Column {
+                        Text("$runningCount", style = MaterialTheme.typography.titleLarge)
+                        Text("Running", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    }
+                    Column {
+                        Text("${(clones.size - runningCount).coerceAtLeast(0)}", style = MaterialTheme.typography.titleLarge)
+                        Text("Stopped", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    }
+                }
             }
         }
 
-        // Cloned Instances List or Empty State
         if (clones.isEmpty()) {
             item {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    color = ObsidianSurfaceElevated,
+                    color = ObsidianSurface,
+                    shape = MaterialTheme.shapes.large,
                     border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianOutline)
                 ) {
                     Column(
-                        modifier = Modifier.padding(20.dp),
+                        modifier = Modifier.padding(horizontal = 22.dp, vertical = 28.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.img_empty_sandbox),
-                            contentDescription = "Empty sandbox container",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(160.dp)
-                                .clip(RoundedCornerShape(14.dp))
-                        )
+                        Text("No cloned apps yet", style = MaterialTheme.typography.titleLarge)
                         Text(
-                            text = stringResource(R.string.empty_vault_title),
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        Text(
-                            text = stringResource(R.string.empty_vault_desc),
-                            style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary)
+                            "Choose an installed app to create its first separate space.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextSecondary
                         )
                         Button(
                             onClick = onNavigateToApps,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("empty_vault_browse_apps_button")
+                            modifier = Modifier.testTag("empty_vault_browse_apps_button")
                         ) {
                             Icon(Icons.Default.Add, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Scan Installed Apps & Clone")
+                            Spacer(Modifier.width(8.dp))
+                            Text("Choose an app")
                         }
                     }
                 }
             }
         } else {
             item {
-                Text(
-                    text = "ISOLATED CONTAINERS (${clones.size})",
-                    style = MaterialTheme.typography.labelMedium.copy(color = TextSecondary)
-                )
+                Text("YOUR APPS", style = MaterialTheme.typography.labelMedium, color = TextSecondary)
             }
             items(clones, key = { it.id }) { clone ->
                 CloneInstanceCard(
                     clone = clone,
-                    icon = remember(clone.sourcePackageName) {
-                        viewModel.findAppIcon(clone.sourcePackageName)
-                    },
+                    icon = remember(clone.sourcePackageName) { viewModel.findAppIcon(clone.sourcePackageName) },
                     onLaunch = {
-                        if (clone.pinHash != null) {
-                            pendingPinClone = clone
-                        } else {
-                            viewModel.launchCloneSession(clone)
-                        }
+                        if (clone.pinHash != null) pendingPinClone = clone
+                        else viewModel.launchCloneSession(clone)
                     },
                     onStop = { viewModel.stopCloneSession(clone) },
                     onRotateProxy = { viewModel.rotateProxyForClone(clone.id) },
                     onCopyDeepLink = {
                         clipboard.setText(AnnotatedString(clone.deepLinkUri))
-                        viewModel.showMessage("Copied ${clone.deepLinkUri}")
+                        viewModel.showMessage("Copied link")
                     },
                     onPinShortcut = { viewModel.pinCloneShortcut(clone) },
                     onOpenDetail = { onOpenCloneDetail(clone.id) }
                 )
             }
         }
-
-        item { Spacer(modifier = Modifier.height(12.dp)) }
+        item { Spacer(Modifier.height(8.dp)) }
     }
 
     pendingPinClone?.let { lockedClone ->
