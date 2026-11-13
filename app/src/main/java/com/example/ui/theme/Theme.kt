@@ -9,19 +9,19 @@ import androidx.compose.ui.unit.dp
 
 private val CloneCoreColorScheme = lightColorScheme(
     primary = CyanPulse,
-    onPrimary = ColorWhite,
+    onPrimary = androidx.compose.ui.graphics.Color.White,
     primaryContainer = CyanContainer,
     onPrimaryContainer = OnCyanContainer,
     secondary = EmeraldMatrix,
-    onSecondary = ColorWhite,
+    onSecondary = androidx.compose.ui.graphics.Color.White,
     secondaryContainer = EmeraldContainer,
     onSecondaryContainer = OnEmeraldContainer,
     tertiary = AmberWarn,
-    onTertiary = ColorWhite,
+    onTertiary = androidx.compose.ui.graphics.Color.White,
     tertiaryContainer = AmberContainer,
     onTertiaryContainer = OnAmberContainer,
     error = CoralAlert,
-    onError = ColorWhite,
+    onError = androidx.compose.ui.graphics.Color.White,
     errorContainer = CoralContainer,
     onErrorContainer = OnCoralContainer,
     background = ObsidianCanvas,
@@ -33,8 +33,6 @@ private val CloneCoreColorScheme = lightColorScheme(
     outline = ObsidianOutline,
     outlineVariant = ObsidianOutlineSubtle
 )
-
-private val ColorWhite = androidx.compose.ui.graphics.Color(0xFFFFFFFF)
 
 val CloneCoreShapes = Shapes(
     extraSmall = RoundedCornerShape(6.dp),
