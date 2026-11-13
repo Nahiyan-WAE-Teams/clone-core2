@@ -5,6 +5,12 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+# Keep only the newest build for a branch; rapid code commits should not queue
+# multiple obsolete APK builds and waste Actions minutes.
+concurrency:
+  group: clonecore-build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-apk:
     runs-on: ubuntu-latest
