@@ -127,10 +127,17 @@ object InstalledAppsScanner {
                 val abis = detectAbisFromApkZip(tempFile.absolutePath)
                 val label = appInfo.loadLabel(pm)?.toString()?.takeIf { it.isNotBlank() }
                     ?: pkgInfo.packageName
+                val importedVersionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    pkgInfo.longVersionCode
+                } else {
+                    @Suppress("DEPRECATION")
+                    pkgInfo.versionCode.toLong()
+                }
+                val importedSizeMb = tempFile.length() / (1024f * 1024f)
                 val safePackage = pkgInfo.packageName.replace(Regex("[^A-Za-z0-9._-]"), "_")
                 val retained = File(
                     importDir,
-                    "${safePackage}_${pkgInfo.longVersionCode}_${UUID.randomUUID()}.apk"
+                    "${safePackage}_${importedVersionCode}_${UUID.randomUUID()}.apk"
                 )
                 if (!tempFile.renameTo(retained)) {
                     tempFile.copyTo(retained, overwrite = false)
@@ -144,17 +151,12 @@ object InstalledAppsScanner {
                     packageName = pkgInfo.packageName,
                     label = label,
                     versionName = pkgInfo.versionName ?: "1.0",
-                    versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                        pkgInfo.longVersionCode
-                    } else {
-                        @Suppress("DEPRECATION")
-                        pkgInfo.versionCode.toLong()
-                    },
+                    versionCode = importedVersionCode,
                     targetSdk = appInfo.targetSdkVersion,
                     minSdk = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) appInfo.minSdkVersion else 24,
                     isSystemApp = false,
                     abiList = abis,
-                    apkSizeMb = tempFile.length() / (1024f * 1024f),
+                    apkSizeMb = importedSizeMb,
                     sourceApkPath = retained.absolutePath,
                     icon = runCatching { appInfo.loadIcon(pm) }.getOrNull()
                 )
