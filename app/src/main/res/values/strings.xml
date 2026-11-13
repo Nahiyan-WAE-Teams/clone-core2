@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">CloneCore</string>
+    <string name="tab_vault">Vault</string>
+    <string name="tab_apps">Apps</string>
+    <string name="tab_kernel">Kernel</string>
+    <string name="tab_network">Network</string>
+    <string name="hero_subtitle">Isolated Multi-Process Sandbox Engine</string>
+    <string name="empty_vault_title">No Active Clones</string>
+    <string name="empty_vault_desc">Scan installed apps to deploy isolated multi-account sandbox containers without root.</string>
+    <string name="action_new_clone">Deploy Clone</string>
+    <string name="action_launch_session">Launch Session</string>
+    <string name="action_stop_session">Terminate Slot</string>
+    <string name="action_rotate_proxy">Rotate Proxy</string>
+    <string name="action_pin_shortcut">Pin Shortcut</string>
+</resources>

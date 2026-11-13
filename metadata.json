@@ -1,0 +1,6 @@
+{
+  "name": "CloneCore",
+  "description": "Non-root Android app cloning and sandbox virtualization engine with isolated multi-process execution, real-time kernel telemetry, automated proxy rotation, and per-session deep-link routing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
