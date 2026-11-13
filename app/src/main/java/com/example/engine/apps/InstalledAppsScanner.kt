@@ -10,6 +10,7 @@ import android.os.Build
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.UUID
 import java.util.zip.ZipFile
 
 data class InstalledAppInfo(
@@ -101,7 +102,10 @@ object InstalledAppsScanner {
 
     suspend fun inspectExternalApkUri(context: Context, uri: Uri): InstalledAppInfo? =
         withContext(Dispatchers.IO) {
-            val tempFile = File(context.cacheDir, "inspect_${System.currentTimeMillis()}.apk")
+            val importDir = File(context.filesDir, "imported_apks").apply { mkdirs() }
+            val tempFile = File(importDir, "incoming_${UUID.randomUUID()}.apk")
+            var retainedFile: File? = null
+            var completed = false
             try {
                 context.contentResolver.openInputStream(uri)?.use { input ->
                     tempFile.outputStream().use { output -> input.copyTo(output) }
@@ -123,8 +127,20 @@ object InstalledAppsScanner {
                 val abis = detectAbisFromApkZip(tempFile.absolutePath)
                 val label = appInfo.loadLabel(pm)?.toString()?.takeIf { it.isNotBlank() }
                     ?: pkgInfo.packageName
+                val safePackage = pkgInfo.packageName.replace(Regex("[^A-Za-z0-9._-]"), "_")
+                val retained = File(
+                    importDir,
+                    "${safePackage}_${pkgInfo.longVersionCode}_${UUID.randomUUID()}.apk"
+                )
+                if (!tempFile.renameTo(retained)) {
+                    tempFile.copyTo(retained, overwrite = false)
+                    tempFile.delete()
+                }
+                retainedFile = retained
+                appInfo.sourceDir = retained.absolutePath
+                appInfo.publicSourceDir = retained.absolutePath
 
-                InstalledAppInfo(
+                val inspected = InstalledAppInfo(
                     packageName = pkgInfo.packageName,
                     label = label,
                     versionName = pkgInfo.versionName ?: "1.0",
@@ -139,13 +155,16 @@ object InstalledAppsScanner {
                     isSystemApp = false,
                     abiList = abis,
                     apkSizeMb = tempFile.length() / (1024f * 1024f),
-                    sourceApkPath = tempFile.absolutePath,
+                    sourceApkPath = retained.absolutePath,
                     icon = runCatching { appInfo.loadIcon(pm) }.getOrNull()
                 )
+                completed = true
+                inspected
             } catch (_: Exception) {
                 null
             } finally {
                 tempFile.delete()
+                if (!completed) retainedFile?.delete()
             }
         }
 

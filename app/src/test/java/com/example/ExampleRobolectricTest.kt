@@ -48,6 +48,17 @@ class ExampleRobolectricTest {
     }
 
     @Test
+    fun `sandbox IDs cannot escape the private sandbox root`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val sandboxBase = SandboxFileSystem.getSandboxBaseDir(context)
+
+        assertTrue(runCatching {
+            SandboxFileSystem.ensureSandboxRoot(context, "../outside")
+        }.isFailure)
+        assertTrue(sandboxBase.exists())
+    }
+
+    @Test
     fun `binder dynamic proxy remaps content authority and resolves virtual package`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val proxy = BinderProxyEngine.createVirtualPackageProxy(
