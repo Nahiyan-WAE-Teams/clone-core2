@@ -10,6 +10,7 @@ import android.os.Build
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.io.IOException
 import java.util.UUID
 import java.util.zip.ZipFile
 
@@ -32,6 +33,8 @@ data class InstalledAppInfo(
  * and extracts ABI, targetSdk, APK size, and metadata without requiring QUERY_ALL_PACKAGES.
  */
 object InstalledAppsScanner {
+
+    private const val MAX_IMPORTED_APK_BYTES = 512L * 1024L * 1024L
 
     suspend fun scanLaunchableApps(context: Context): List<InstalledAppInfo> =
         withContext(Dispatchers.IO) {
@@ -108,7 +111,19 @@ object InstalledAppsScanner {
             var completed = false
             try {
                 context.contentResolver.openInputStream(uri)?.use { input ->
-                    tempFile.outputStream().use { output -> input.copyTo(output) }
+                    tempFile.outputStream().use { output ->
+                        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                        var totalBytes = 0L
+                        while (true) {
+                            val read = input.read(buffer)
+                            if (read < 0) break
+                            totalBytes += read
+                            if (totalBytes > MAX_IMPORTED_APK_BYTES) {
+                                throw IOException("APK exceeds the 512 MiB import limit")
+                            }
+                            output.write(buffer, 0, read)
+                        }
+                    }
                 } ?: return@withContext null
 
                 val pm = context.packageManager

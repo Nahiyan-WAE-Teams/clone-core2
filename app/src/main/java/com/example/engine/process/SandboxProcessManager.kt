@@ -114,7 +114,10 @@ class SandboxProcessManager(
                         pendingInits.remove(slotIdx) ?: clone
                     }
                 } ?: return
-                sendInitMessage(remote, pending)
+                if (!sendInitMessage(remote, pending)) {
+                    releaseFailedSlot(slotIdx, clone.id)
+                    return
+                }
                 onSlotEvent(
                     pending.id,
                     "PROCESS",
@@ -171,7 +174,7 @@ class SandboxProcessManager(
         onSlotEvent(cloneId, "PROCESS", "Could not bind sandbox process :sandbox_p$slotIdx")
     }
 
-    private fun sendInitMessage(remote: Messenger, clone: CloneInstanceEntity) {
+    private fun sendInitMessage(remote: Messenger, clone: CloneInstanceEntity): Boolean {
         val msg = Message.obtain(null, BaseSandboxSlotService.MSG_INIT_SANDBOX).apply {
             replyTo = replyMessenger
             data = Bundle().apply {
@@ -182,9 +185,11 @@ class SandboxProcessManager(
                 putInt(BaseSandboxSlotService.KEY_THREAD_PRIORITY, clone.threadPriorityBoost)
             }
         }
-        try {
+        return try {
             remote.send(msg)
+            true
         } catch (_: Exception) {
+            false
         }
     }
 
