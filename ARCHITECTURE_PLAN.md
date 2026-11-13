@@ -115,9 +115,67 @@
 
 ---
 
-## 6. Current Limitations & Next-Phase Roadmap (For Future Engineering)
-Right now, CloneCore's virtualization engine provides **process-slot isolation, VFS redirection, dynamic proxy hooks, proxy rotation, kernel telemetry, and deep-link/shortcut routing** cleanly in user space. If the next phase requires running arbitrary third-party APK binaries **inside** the host's `:sandbox_pN` processes (full guest APK containerization rather than host launch intent + sandbox state), the next engineering steps are:
-1. **Guest APK Dex & Resource Loader**: Load the target APK's `base.apk` using an isolated `DexClassLoader` / `PathClassLoader` inside `:sandbox_pN` and attach its `AssetManager` / `Resources` via `PackageManager.getResourcesForApplication`.
-2. **AMS / `Instrumentation` Activity Stubbing**: Register pre-declared stub Activities (`StubActivity0..3`) in `AndroidManifest.xml` and hook `ActivityThread.mH` / `Instrumentation.execStartActivity` to map guest Activities onto manifest-declared stubs inside `:sandbox_pN`.
-3. **Native `libc` IO & Binder Hook (NDK / JNI)**: Add a C++ NDK module (`libclonecore_vfs.so`) using PLT/GOT or inline syscall hooks (e.g., `openat`, `stat`, `access`) to redirect native `.so` file paths transparently to `filesDir/sandboxes/<cloneId>/`.
-4. **Local `VpnService` Per-Process Traffic Routing**: Implement an Android `VpnService` packet forwarder (`tun2socks`) to force all TCP/UDP packets from sandboxed sessions through `127.0.0.1:<relayPort>` and the rotating upstream SOCKS5/HTTP proxy.
+## 6. Verified Implementation Status & Next-Phase Roadmap
+
+The following status was checked against the current Kotlin source on 2026-11-13. Do not describe a capability as implemented unless it is listed under the verified items below.
+
+### 6.1 What the current build actually does
+
+| Area | Verified behavior | Important boundary |
+|---|---|---|
+| Process slots | Four bound Android services can run in four named app processes and exchange Messenger messages. Slot ownership is reserved to prevent two clone records from claiming one slot. | These processes share the host application's UID and permissions. They are separate app processes, not isolated security principals. |
+| Sandbox storage | Clone-specific directories are provisioned, listed, measured, and cache-cleaned. Clone IDs are validated before path construction. | VirtualContextWrapper only redirects calls made through that wrapper. No guest APK currently uses it, and native file I/O or calls through the host application context are not transparently redirected. |
+| Binder compatibility helpers | A local Java proxy wraps CloneCore's own VirtualPackageService interface and can demonstrate package-name mapping, URI formatting, and namespace string generation. | It does not hook Android AMS, PMS, ContentProvider Binder interfaces, Settings.Secure, or Google Play Services. Diagnostic counters are not framework interception metrics. |
+| Proxy relay | A loopback TCP listener can forward bytes to one selected upstream socket endpoint. TCP reachability and a SOCKS5 greeting can be probed. | It is not connected to guest-app traffic, has one global upstream rather than per-clone routing, and does not implement proxy protocol translation or upstream authentication. A null upstream rejects relay clients; it is not direct Internet passthrough. |
+| Telemetry | The host and slot service can report process PID, Java heap, native heap allocation, thread estimate, and service uptime. | These are measurements of CloneCore processes, not of a guest application process. |
+| App discovery | Launchable installed apps can be discovered and external APK metadata can be inspected. | Inspection is not installation or cloning. |
+| Session links | CloneCore can route its own deep links and shortcuts to a clone record. | The link does not launch a guest APK because the guest runtime is not implemented. |
+
+### 6.2 Core capability that is not implemented yet
+
+**Arbitrary third-party APK execution inside a clone session is not implemented.** The current launch path creates a CloneCore service session; it does not load the selected APK's code/resources or run its Activities. The separate "Open Target" action starts the original installed application through Android's normal launch intent.
+
+Consequently, the current build must not be advertised as providing:
+- independent runnable copies of arbitrary installed apps;
+- separate Android package identities or signatures;
+- complete SharedPreferences, database, provider, or native-file isolation for guest code;
+- real Android Binder interception or Google Play Services account isolation;
+- per-clone network capture, proxy enforcement, or proxy rotation;
+- guest-app CPU/RAM telemetry.
+
+### 6.3 Engineering roadmap
+
+1. **Guest APK intake and validation**
+   - Persist imported APK bytes inside the clone directory instead of temporary paths.
+   - Support base APK plus split APK sets explicitly; reject incomplete split sets.
+   - Record package name, version, SDK range, ABI, signing-certificate digest, and source provenance.
+   - Keep original APK bytes immutable and verify their digest after copying.
+
+2. **Guest runtime proof of concept**
+   - Build a dedicated guest runtime module with an explicit DexClassLoader/PathClassLoader, resource loading, guest Application lifecycle, and predeclared host stub Activities.
+   - Start with a small locally built fixture APK and a documented supported API range.
+   - Do not claim general compatibility until Activity launch, configuration changes, process recreation, services, providers, and permissions have been tested.
+   - Treat hidden Android APIs and framework interception as version-sensitive compatibility work, not as guaranteed hooks.
+
+3. **Context and storage isolation**
+   - Route guest-created contexts through the clone-specific context bridge.
+   - Cover files, cache, databases, preferences, no-backup storage, content providers, and package metadata.
+   - Add tests proving clone A cannot read or modify clone B's data.
+   - Document that native openat/syscall access is not covered by a Kotlin ContextWrapper; add an NDK layer only after a tested guest runtime requires it.
+
+4. **Network isolation and proxy enforcement**
+   - Design traffic capture before presenting proxy settings as enforced.
+   - A loopback TCP relay alone does not capture application traffic. Evaluate a VpnService or a guest-runtime socket layer, and explicitly resolve how traffic is distinguished between sessions sharing the host UID.
+   - Implement protocol negotiation, authentication, DNS behavior, IPv4/IPv6, UDP handling, connection failure reporting, and per-clone upstream state.
+   - Add local proxy fixtures for HTTP CONNECT, SOCKS5 no-auth, and SOCKS5 username/password tests.
+
+5. **Process lifecycle and resource management**
+   - Bind a process slot to one active clone at a time; reject launches when all four slots are occupied.
+   - Persist actual slot assignment and reconcile it after process death.
+   - Test rapid launch/stop, bind failure, service death, app restart, and concurrent launch requests.
+
+6. **Verification before release**
+   - Add unit tests for clone ID/path validation, slot ownership, proxy handshakes, and APK metadata.
+   - Add instrumentation tests using fixture APKs for guest launch and cross-clone storage separation.
+   - Run CI build and tests only after the implementation milestone is ready; an APK assembly alone is not proof of guest-app compatibility.
+
