@@ -386,7 +386,7 @@ fun KernelScreen(
             }
         }
 
-        // Binder & Dynamic Proxy Hooks Table
+        // Local compatibility helper diagnostics (not framework Binder hooks)
         item {
             Surface(
                 shape = RoundedCornerShape(18.dp),
@@ -404,7 +404,7 @@ fun KernelScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Icon(Icons.Default.Security, contentDescription = null, tint = EmeraldMatrix)
-                        Text("Dynamic Proxy & Binder Interceptors", style = MaterialTheme.typography.titleMedium)
+                        Text("Compatibility Helpers (No System Hooks)", style = MaterialTheme.typography.titleMedium)
                     }
                     binderHooks.forEach { hook ->
                         Surface(

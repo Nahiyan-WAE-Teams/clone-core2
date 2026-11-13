@@ -316,7 +316,7 @@ fun CloneDetailScreen(
                             ) {
                                 Icon(Icons.Default.Security, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Verify Hooks")
+                                Text("Run Helper Checks")
                             }
                             OutlinedButton(
                                 onClick = { viewModel.rotateProxyForClone(currentClone.id) },
