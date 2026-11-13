@@ -543,8 +543,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteClone(clone: CloneInstanceEntity) {
         viewModelScope.launch {
             rotationJobs.remove(clone.id)?.cancel()
-            if (clone.isRunning) {
-                processManager.stopSlot(clone.slotIndex)
+            processManager.findSlotForClone(clone.id)?.let { activeSlot ->
+                processManager.stopSlot(activeSlot)
             }
             withContext(Dispatchers.IO) {
                 SandboxFileSystem.deleteSandbox(app, clone.id)
