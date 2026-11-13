@@ -194,12 +194,6 @@ fun VaultScreen(
                         else viewModel.launchCloneSession(clone)
                     },
                     onStop = { viewModel.stopCloneSession(clone) },
-                    onRotateProxy = { viewModel.rotateProxyForClone(clone.id) },
-                    onCopyDeepLink = {
-                        clipboard.setText(AnnotatedString(clone.deepLinkUri))
-                        viewModel.showMessage("Copied link")
-                    },
-                    onPinShortcut = { viewModel.pinCloneShortcut(clone) },
                     onOpenDetail = { onOpenCloneDetail(clone.id) }
                 )
             }
@@ -229,217 +223,42 @@ private fun CloneInstanceCard(
     icon: android.graphics.drawable.Drawable?,
     onLaunch: () -> Unit,
     onStop: () -> Unit,
-    onRotateProxy: () -> Unit,
-    onCopyDeepLink: () -> Unit,
-    onPinShortcut: () -> Unit,
     onOpenDetail: () -> Unit
 ) {
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .clickable(onClick = onOpenDetail)
-            .testTag("clone_card_${clone.id}"),
-        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onOpenDetail).testTag("clone_card_${clone.id}"),
+        shape = RoundedCornerShape(14.dp),
         color = ObsidianSurfaceElevated,
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            if (clone.isRunning) EmeraldMatrix.copy(alpha = 0.6f) else ObsidianOutline
-        )
+        border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianOutline)
     ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                AppIconBadge(icon = icon, cloneIndex = clone.cloneIndex, size = 50.dp)
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Text(
-                            text = clone.cloneLabel,
-                            style = MaterialTheme.typography.titleMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false)
-                        )
-                        if (clone.pinHash != null) {
-                            Icon(
-                                imageVector = Icons.Default.Lock,
-                                contentDescription = "PIN protected",
-                                tint = AmberWarn,
-                                modifier = Modifier.size(14.dp)
-                            )
-                        }
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                AppIconBadge(icon = icon, cloneIndex = clone.cloneIndex, size = 48.dp)
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(clone.cloneLabel, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                        if (clone.pinHash != null) Icon(Icons.Default.Lock, contentDescription = "PIN protected", tint = AmberWarn, modifier = Modifier.size(16.dp))
                     }
-                    Text(
-                        text = clone.sourcePackageName,
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontFamily = JetBrainsMonoFamily,
-                            color = TextSecondary
-                        ),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        StatusPill(
-                            text = if (clone.isRunning) {
-                                "P${clone.slotIndex} · PID ${clone.activePid}"
-                            } else {
-                                "SLOT P${clone.slotIndex} · COLD"
-                            },
-                            accentColor = if (clone.isRunning) EmeraldMatrix else TextMuted
-                        )
-                        if (clone.gmsIsolationEnabled) {
-                            StatusPill(text = "GMS SAFE", accentColor = CyanPulse)
-                        }
-                    }
+                    Text(clone.sourcePackageName, style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    StatusPill(text = if (clone.isRunning) "Running" else "Stopped", accentColor = if (clone.isRunning) EmeraldMatrix else TextMuted)
                 }
-                IconButton(
-                    onClick = onOpenDetail,
-                    modifier = Modifier.testTag("clone_inspect_btn_${clone.id}")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "Inspect container",
-                        tint = TextSecondary
-                    )
+                IconButton(onClick = onOpenDetail, modifier = Modifier.testTag("clone_inspect_btn_${clone.id}")) {
+                    Icon(Icons.Default.Settings, contentDescription = "Clone settings", tint = TextSecondary)
                 }
             }
-
-            // Network & Deep-link Metadata Strip
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = ObsidianSurfaceHigh
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.VpnKey,
-                                contentDescription = null,
-                                tint = if (clone.proxyEnabled) CyanPulse else TextMuted,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Text(
-                                text = "${clone.currentProxyLabel} (${clone.proxyRotationMode})",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = if (clone.proxyEnabled) MaterialTheme.colorScheme.onSurface else TextSecondary
-                                ),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Shield,
-                                contentDescription = null,
-                                tint = EmeraldMatrix,
-                                modifier = Modifier.size(13.dp)
-                            )
-                            Text(
-                                text = "ID:${clone.virtualAndroidId.take(8)}",
-                                style = MaterialTheme.typography.labelSmall.copy(color = TextSecondary)
-                            )
-                        }
-                    }
+            if (clone.isRunning) {
+                FilledTonalButton(onClick = onStop, modifier = Modifier.fillMaxWidth().testTag("clone_stop_btn_${clone.id}")) {
+                    Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Stop")
                 }
-            }
-
-            // Action Controls
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (clone.isRunning) {
-                    FilledTonalButton(
-                        onClick = onStop,
-                        colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = CoralAlert.copy(alpha = 0.16f),
-                            contentColor = CoralAlert
-                        ),
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("clone_stop_btn_${clone.id}")
-                    ) {
-                        Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Terminate")
-                    }
-                } else {
-                    Button(
-                        onClick = onLaunch,
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("clone_launch_btn_${clone.id}")
-                    ) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Launch")
-                    }
-                }
-
-                OutlinedButton(
-                    onClick = onRotateProxy,
-                    contentPadding = PaddingValues(horizontal = 12.dp),
-                    modifier = Modifier.testTag("clone_rotate_btn_${clone.id}")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = "Rotate proxy",
-                        modifier = Modifier.size(17.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Proxy")
-                }
-
-                IconButton(
-                    onClick = onCopyDeepLink,
-                    modifier = Modifier.testTag("clone_copy_link_btn_${clone.id}")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ContentCopy,
-                        contentDescription = "Copy deep link",
-                        tint = CyanPulse
-                    )
-                }
-
-                IconButton(
-                    onClick = onPinShortcut,
-                    modifier = Modifier.testTag("clone_pin_btn_${clone.id}")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PushPin,
-                        contentDescription = "Pin shortcut",
-                        tint = if (clone.isPinnedShortcut) EmeraldMatrix else TextSecondary
-                    )
+            } else {
+                Button(onClick = onLaunch, modifier = Modifier.fillMaxWidth().testTag("clone_launch_btn_${clone.id}")) {
+                    Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Open")
                 }
             }
         }
