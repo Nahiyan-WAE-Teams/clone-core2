@@ -214,15 +214,13 @@ class SandboxProcessManager(
 
     fun stopSlot(slotIndex: Int) {
         if (slotIndex !in 0..3) return
-        val stoppedClone = synchronized(slotOwners) {
+        val (stoppedClone, conn) = synchronized(slotOwners) {
             val owner = slotOwners.remove(slotIndex)
-            connections.remove(slotIndex).also {
-                messengers.remove(slotIndex)
-                pendingInits.remove(slotIndex)
-            }
-            owner
+            val connection = connections.remove(slotIndex)
+            messengers.remove(slotIndex)
+            pendingInits.remove(slotIndex)
+            owner to connection
         }
-        val conn = synchronized(slotOwners) { connections.remove(slotIndex) }
         if (conn != null) {
             try {
                 context.unbindService(conn)
